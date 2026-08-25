@@ -33,7 +33,7 @@
 
 ## fresh 对抗评审
 
-评审的布局隔离、`--forbid-paths` 注入、`reads:` 审计及作废/新会话重派，完整且唯一地定义在 [`failure-modes.md`](failure-modes.md#fresh-对抗评审完整闭环)。本文件不重复该规则。PISR 加成：reviewer 通道默认 `--tools read,grep,find,ls`，写入在进程级不可达——布局污染的风险面只剩"读了不该读的"，由 `reads:` 审计兜底。
+评审的布局隔离、`--forbid-paths` 注入、`reads:` 审计及作废/新会话重派，完整且唯一地定义在 [`failure-modes.md`](failure-modes.md#fresh-对抗评审完整闭环)。本文件不重复该规则。PISR 加成：reviewer 通道默认 `--tools read,grep,find,ls` + `--capture-reply`，写入在进程级不可达（报告由驱动器从事件流最终回复机械落盘，exit≠0/空回复不落盘）——布局污染的风险面只剩"读了不该读的"，由 `reads:` 审计兜底；越权 toolcall 审计优先于落盘。
 
 ## 失败看护与切换
 
@@ -207,4 +207,4 @@ Set-Content -Path .\prompts\worker-01.txt -Value $prompt -Encoding UTF8
 }
 ```
 
-字段语义：`usage_*` 与 `tool_calls` 来自 `--mode json` 事件流的真实计数（OCSR 为字节估算，PISR 为实测值）；`model_cost_*`/`cost_estimate` 恒 0（`pi --list-models` 目录不含价格，保留字段以维持 schema 兼容）；`tool_violations > 0` 即越权审计命中，`outcome_detail` 同步为 `tool_violation:<names>`。
+字段语义：`usage_*` 与 `tool_calls` 来自 `--mode json` 事件流的真实计数（OCSR 为字节估算，PISR 为实测值）；`model_cost_*`/`cost_estimate` 恒 0（`pi --list-models` 目录不含价格，保留字段以维持 schema 兼容）；`tool_violations > 0` 即越权审计命中，`outcome_detail` 同步为 `tool_violation:<names>`；`--capture-reply` 落盘的条目 `note` 含 `artifact captured from final reply`。

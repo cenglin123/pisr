@@ -65,6 +65,7 @@ steps:                     # 非空；**第一个步骤是入口**
 | `output` | ✅ | 期望产物路径，**必须在 `run.workdir` 之内**（D7） |
 | `tools` | | pi 工具白名单列表（如 `[read, grep, find, ls]`）；缺省全工具（pisr 扩展） |
 | `thinking` | | `--thinking` 档位字符串（pisr 扩展） |
+| `capture_reply` | | 布尔；产物=最终回复机械落盘（只读 reviewer，pisr 扩展） |
 | `role` | | 遥测角色 |
 | `scope` | | **runner 的分组计数键**，见下方专节 |
 | `timeout_min` | | 看门狗阈值（正整数） |

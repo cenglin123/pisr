@@ -16,6 +16,10 @@
 - pi 0.84.3；默认白名单：`cc-switch-xiaomi-mi-mo/mimo-v2.5`、`cc-switch-xiaomi-mi-mo/mimo-v2.5-pro`
 - 实证（2026-08-26）：`@file` prompt 注入 ✅；`--tools read,grep,find,ls` 硬白名单（模型无 write、零产物）✅；`--mode json` 事件流含 usage/toolcall ✅
 
+## 本轮新增能力（冒烟中固化）
+
+- `--capture-reply`：只读 reviewer 的产物回收模式——驱动器把事件流最终回复机械落盘为产物（exit≠0/空回复不落盘；越权审计与 reads: 审计优先于落盘）。SKILL.md 七要素第 7 项与 refs 已同步。
+
 ## 未决事项
 
 - （无；后续特性走 feature branch + PR squash）

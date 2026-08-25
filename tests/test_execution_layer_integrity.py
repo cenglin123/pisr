@@ -259,6 +259,79 @@ class TestToolViolationAudit:
             assert any(r.get("tool_audit") == "unenforced" for r in rows), rows
 
 
+# ─── A4 · capture-reply 机械落盘 ─────────────────────────────────────
+class TestCaptureReply:
+    def test_exit0_reply_captured_as_artifact(self, capsys):
+        """只读 reviewer：exit=0、无自写产物、回复非空 → 驱动器机械落盘，记成功。"""
+        with tempfile.TemporaryDirectory() as t:
+            td = Path(t)
+            ev = _events(td, "rv", tool_names=["read", "grep"], final_text="## 评审报告\nverdict: pass")
+            w = _worker(td, "rv", proc=_FakeProc(0), events=ev, tools=["read", "grep", "find", "ls"])
+            w["capture_reply"] = True
+            rc, rows = _run_watch(td, [w])
+            assert rc == 0
+            captured = td / "rv.md"
+            assert captured.is_file()
+            assert "verdict: pass" in captured.read_text(encoding="utf-8")
+            assert any("captured from final reply" in (r.get("note") or "") for r in rows), rows
+            assert any(r.get("tool_audit") == "clean" for r in rows), rows
+
+    def test_nonzero_exit_not_captured(self):
+        """exit≠0 的回复可能不完整：不得 capture，仍判确定性失败。"""
+        with tempfile.TemporaryDirectory() as t:
+            td = Path(t)
+            ev = _events(td, "rv", final_text="partial")
+            w = _worker(td, "rv", proc=_FakeProc(1), events=ev)
+            w["capture_reply"] = True
+            rc, _ = _run_watch(td, [w])
+            assert rc == mod.EXIT_DETERMINISTIC_FAILURE
+            assert not (td / "rv.md").exists()
+
+    def test_empty_reply_not_captured(self):
+        with tempfile.TemporaryDirectory() as t:
+            td = Path(t)
+            ev = _events(td, "rv", final_text="")
+            w = _worker(td, "rv", proc=_FakeProc(0), events=ev)
+            w["capture_reply"] = True
+            rc, rows = _run_watch(td, [w])
+            assert rc == mod.EXIT_DETERMINISTIC_FAILURE
+            assert any(r.get("outcome_detail") == "error:exit_0_no_artifact" for r in rows)
+
+    def test_violation_not_captured_even_with_reply(self, capsys):
+        """越权审计优先于 capture：白名单外 toolcall 出现即失败，不落盘回复。"""
+        with tempfile.TemporaryDirectory() as t:
+            td = Path(t)
+            ev = _events(td, "rv", tool_names=["bash"], final_text="I ran commands")
+            w = _worker(td, "rv", proc=_FakeProc(0), events=ev, tools=["read", "grep", "find", "ls"])
+            w["capture_reply"] = True
+            rc, _ = _run_watch(td, [w])
+            assert rc == mod.EXIT_DETERMINISTIC_FAILURE
+            assert "工具越权" in capsys.readouterr().err
+            assert not (td / "rv.md").exists()
+
+    def test_capture_with_forbid_paths_runs_reads_audit(self, capsys):
+        """capture 路径同样执行 reads: 审计（与自写产物同一标准）。"""
+        with tempfile.TemporaryDirectory() as t:
+            td = Path(t)
+            report = "verdict: pass\n\nreads:\n  - C:/secret/leaked.md\n"
+            ev = _events(td, "rv", tool_names=["read"], final_text=report)
+            w = _worker(td, "rv", proc=_FakeProc(0), events=ev, tools=["read", "grep", "find", "ls"])
+            w["capture_reply"] = True
+            rc, rows = _run_watch(td, [w], forbid_paths=["C:/secret"])
+            # 产物落盘成功（审计是报告机制），但 read_audit=violated 必须入遥测
+            assert rc == 0
+            assert any(r.get("read_audit") == "violated" for r in rows), rows
+            assert "violated" in capsys.readouterr().out
+
+    def test_capture_off_keeps_old_semantics(self):
+        with tempfile.TemporaryDirectory() as t:
+            td = Path(t)
+            ev = _events(td, "rv", final_text="reply only")
+            w = _worker(td, "rv", proc=_FakeProc(0), events=ev)
+            rc, _ = _run_watch(td, [w])
+            assert rc == mod.EXIT_DETERMINISTIC_FAILURE
+
+
 # ─── A3 · PID 终止 ───────────────────────────────────────────────────
 class TestPidKill:
     def test_kill_uses_pid_tree_kill(self):

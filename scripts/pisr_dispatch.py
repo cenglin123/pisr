@@ -855,6 +855,7 @@ def _dispatch_batch(
           "output": Path,              # 必填：期望产物路径
           "tools": list[str] | None,   # 可选：--tools 白名单（None=全工具）
           "thinking": str,             # 可选：--thinking 档位
+          "capture_reply": bool,       # 可选：产物=最终回复的机械落盘（只读 reviewer）
           "prompt_size_bytes": int,    # 可选：遥测用，缺省 0
         }
 
@@ -887,6 +888,7 @@ def _dispatch_batch(
         w.setdefault("prompt_size_bytes", _resolve_prompt_size(w["prompt_file"]))
         w.setdefault("tools", None)
         w.setdefault("thinking", "")
+        w.setdefault("capture_reply", False)
         w["forbid_paths"] = forbid_paths
     if not output_dir.is_dir():
         print(f"❌ 输出目录不存在: {output_dir}", file=sys.stderr)
@@ -1020,6 +1022,7 @@ def cmd_dispatch(args) -> int:
     if getattr(args, "tools", None):
         tools = [t.strip() for t in args.tools.split(",") if t.strip()]
     thinking = getattr(args, "thinking", "") or ""
+    capture_reply = bool(getattr(args, "capture_reply", False))
 
     # 解析 workers（分隔符 | 避免与 Windows 盘符 C: 及模型 ID 中的 / 冲突）
     # 格式：PROMPT_PATH|MODEL|LABEL
@@ -1042,7 +1045,7 @@ def cmd_dispatch(args) -> int:
         prompt_size = _resolve_prompt_size(prompt_file)
         parsed.append({"prompt_file": prompt_file, "model": model, "label": label,
                        "output": output_dir / output_name, "prompt_size_bytes": prompt_size,
-                       "tools": tools, "thinking": thinking})
+                       "tools": tools, "thinking": thinking, "capture_reply": capture_reply})
     # 检查 output 路径冲突
     outputs = [p["output"] for p in parsed]
     if len(outputs) != len(set(str(o) for o in outputs)):
@@ -1223,7 +1226,10 @@ def _watch_loop(
                 landed.add(i)
                 continue
 
-            # 进程已退出而产物未落盘 —— 无论退出码是否为 0 都是确定性失败。
+            # 进程已退出而产物未落盘 —— 无论退出码是否为 0 都是确定性失败，
+            # 除非启用了 --capture-reply 且最终回复非空（只读 reviewer 的产物
+            # 由驱动器从事件流最终回复**机械落盘**：产物即回复的忠实捕获，
+            # 不存在"自述完成"信任面）。
             if exit_code is not None:
                 elapsed = (now - start_times[i]) / 60
                 stderr_text = ""
@@ -1234,6 +1240,81 @@ def _watch_loop(
                 u_in, u_out, u_tot, u_cost = _usage_fields(ev.get("usage", {}))
                 tool_names = ev.get("tool_names", [])
                 tool_audit, tool_violations = _audit_tool_calls(tool_names, p.get("tools"))
+                final_text = (ev.get("final_text") or "").strip()
+
+                if tool_audit == "violated":
+                    od = f"tool_violation:{','.join(tool_violations)}"
+                    reason = "tool_violation"
+                    human = (f"[pisr] ❌ {p['label']} 工具越权审计命中: {tool_violations}"
+                             f"（白名单: {p.get('tools')}）")
+                    _append_telemetry(p["model"], _normalize_role(role), "detached", "error",
+                                      round(elapsed, 1), 0,
+                                      f"tool violation: {tool_violations}",
+                                      prompt_size_bytes=p.get("prompt_size_bytes", 0),
+                                      task_id=task_id, label=p.get("label", ""),
+                                      plan_ref=plan_ref, scope=scope,
+                                      blocking_chain=blocking_chain,
+                                      outcome_detail=od,
+                                      usage_input=u_in, usage_output=u_out,
+                                      usage_total_tokens=u_tot, usage_cost=u_cost,
+                                      tool_calls=len(tool_names),
+                                      tool_violations=len(tool_violations),
+                                      tool_audit=tool_audit)
+                    _append_dispatch_ledger(ledger, {
+                        "event": "failed", "reason": reason, "label": p["label"],
+                        "model": p["model"], "wall_min": round(elapsed, 1),
+                        "violations": tool_violations, "exit_code": exit_code,
+                    })
+                    print(human, file=sys.stderr)
+                    failed.add(i)
+                    continue
+
+                if p.get("capture_reply") and exit_code == 0 and final_text:
+                    # 机械落盘：驱动器把最终回复原样写入期望产物路径。
+                    # 只读 reviewer（--tools read,grep,find,ls）没有 write 工具，
+                    # 其报告天然以回复形态存在——这不是"采信自述"，而是
+                    # 事件流证据的确定性物化。
+                    output.parent.mkdir(parents=True, exist_ok=True)
+                    _write_utf8(output, final_text + "\n")
+                    # 读路径审计（--forbid-paths 指定时）：与自写产物同一标准
+                    read_audit = ""
+                    if forbid_paths:
+                        read_audit, violation = _audit_output_reads(output, forbid_paths)
+                        if read_audit == "violated":
+                            audit_detail = f"violated({violation})"
+                        elif read_audit == "unavailable":
+                            audit_detail = "unavailable(报告未含 reads 段)"
+                        else:
+                            audit_detail = "clean"
+                        print(f"[pisr] 读路径审计: {p['label']} {audit_detail}")
+                    _append_telemetry(p["model"], _normalize_role(role or ""), "detached", "success",
+                                      round(elapsed, 1), output.stat().st_size,
+                                      prompt_size_bytes=p.get("prompt_size_bytes", 0),
+                                      response_size_bytes=output.stat().st_size,
+                                      task_id=task_id or "", label=p.get("label", ""),
+                                      plan_ref=plan_ref or "",
+                                      scope=scope or "", blocking_chain=blocking_chain or [],
+                                      timeout_policy_requested=timeout_policy_requested,
+                                      timeout_policy_resolved=timeout_policy,
+                                      usage_input=u_in, usage_output=u_out,
+                                      usage_total_tokens=u_tot, usage_cost=u_cost,
+                                      tool_calls=len(tool_names), tool_violations=len(tool_violations),
+                                      tool_audit=tool_audit,
+                                      read_audit=read_audit,
+                                      note="artifact captured from final reply")
+                    _append_dispatch_ledger(ledger, {
+                        "event": "landed", "label": p["label"], "model": p["model"],
+                        "output": str(output), "bytes": output.stat().st_size,
+                        "wall_min": round(elapsed, 1), "captured_from_reply": True,
+                        "pre_existed": False, "change": True,
+                        "usage_input": u_in, "usage_output": u_out,
+                        "usage_total_tokens": u_tot, "tool_calls": len(tool_names),
+                    })
+                    print(f"[pisr] ✅ {p['label']} 落盘（回复捕获，{output.stat().st_size}B, "
+                          f"{elapsed:.1f}min, tokens={u_tot}, tools={len(tool_names)}）")
+                    landed.add(i)
+                    continue
+
                 if exit_code == 0:
                     od = "error:exit_0_no_artifact"
                     reason = "pi_exit_0_no_artifact"
@@ -2025,6 +2106,7 @@ def cmd_run(args) -> int:
             "output": out_path,
             "tools": [str(t) for t in (step.get("tools") or [])] or None,
             "thinking": str(step.get("thinking") or ""),
+            "capture_reply": bool(step.get("capture_reply", False)),
         }
         return _dispatch_batch(
             [worker],
@@ -2186,6 +2268,10 @@ def main():
                              "reviewer 场景必用；是工具面约束，不是安全沙箱")
     p_disp.add_argument("--thinking", default="",
                         help="--thinking 档位（off/minimal/low/medium/high/...），默认不指定")
+    p_disp.add_argument("--capture-reply", action="store_true",
+                        help="产物=最终回复的机械落盘：进程退出且期望产物未落盘时，"
+                             "驱动器把事件流最终回复原样写入产物路径（只读 reviewer 的"
+                             "推荐回收方式；exit≠0 或回复为空仍判失败）")
     p_disp.add_argument("--progress", action="store_true", help="输出细粒度过程信息（已就绪/错峰等；启动、落盘、失败、超时等关键生命周期行默认输出）")
     p_disp.add_argument("--work-dir", help="临时工作目录 (默认 $TEMP)")
     p_disp.add_argument("--harness", default="cli",

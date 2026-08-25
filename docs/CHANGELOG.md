@@ -10,3 +10,4 @@
 - 遥测扩展 usage_input/output/total_tokens/cost、tool_calls、tool_violations 字段（事件流实测值）；cost_estimate 恒 0（pi 目录不含价格）。
 - 治理：agent_links/audit/changelog 复用（通用工具）、verify_pisr_skill.py 锚点回归、pre-commit hook、PR squash 工作流。
 - 实证基线：pi 0.84.3；`@file` 注入 ✅；`--tools read,grep,find,ls` 硬白名单（模型无 write 可用、零产物）✅。
+- `--capture-reply`：只读 reviewer 产物回收（最终回复机械落盘；越权/reads 审计优先）；冒烟中实地演练 name-mismatch 失败分层。

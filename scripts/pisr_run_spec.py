@@ -305,6 +305,11 @@ def _validate_step_body(step: dict, sid: str, spec_dir: Path,
             _require(isinstance(thinking, str) and bool(thinking),
                      "dispatch-thinking", "thinking 必须是非空字符串（--thinking 档位）",
                      f"{loc}.thinking")
+        capture_reply = step.get("capture_reply")
+        if capture_reply is not None:
+            _require(isinstance(capture_reply, bool),
+                     "dispatch-capture-reply", "capture_reply 必须是布尔值",
+                     f"{loc}.capture_reply")
         meta = step.get("meta")
         if meta is not None:
             # `meta` 透传给 ocsr 的遥测归因（task_id / plan_ref / scope 等）。

@@ -38,9 +38,18 @@
 - [x] T7 SKILL.md（四步闭环+七要素+按需专题表）+ refs/ 7 篇（dispatch-patterns/failure-modes/model-defaults/pitfalls-reference/hierarchical-command/run-spec/release-executor；converge-integration 不移植，SKILL.md 显式排除）
 - [x] T8 docs/（CURRENT/STRUCTURE/overview/deployment/pitfalls/audit-checklist/CHANGELOG）+ AGENTS.md（PR squash 工作流全文沿用）+ agent_links repair + .githooks/pre-commit + README.md
 - [x] T9 离线验证全绿：`python scripts/verify_pisr_skill.py`、`agent_links.py check`、`audit.py check`、`pytest tests/ -q`；首个 commit
-- [ ] T10 在线冒烟（真实消耗 3–5 次廉价 mimo 调用，已获用户授权）：preflight → selftest --model → dispatch 产出型 worker → dispatch 只读 reviewer（--tools read,grep,find,ls）→ telemetry/summary 检视
+- [x] T10 在线冒烟（真实消耗 3–5 次廉价 mimo 调用，已获用户授权）：preflight → selftest --model → dispatch 产出型 worker → dispatch 只读 reviewer（--tools read,grep,find,ls）→ telemetry/summary 检视
 - [ ] T11 部署 `~/.claude/skills/pisr`（排除 .git/tests/.githooks/docs/plans）+ GitHub `cenglin123/pisr` 推送
 - [ ] T12 .memory INDEX 记录事件；设计文档补记差异实证
+
+## 冒烟实证记录（2026-08-26）
+
+- preflight：2 模型 available（目录检查 + 真实探测）。
+- selftest --model：产物 16B、tokens=6086、tools=2，内容校验通过。
+- 产出型 worker：834B、tokens=7659、tools=3，四查通过。
+- **真实事故演练**：首轮 worker prompt 写死输出名与 --output-pattern 不一致 → 驱动器正确判 `error:exit_0_name_mismatch`（勿按 0 产物重派）+ unexpected_write 遥测——失败语义分层实地验证。
+- 只读 reviewer（--tools read,grep,find,ls --capture-reply --forbid-paths）：回复机械落盘 4495B、tokens=8902、tool_audit=clean、reads 审计 clean。
+- 冒烟中发现并修复：capture 路径补 reads: 审计；新增 `--capture-reply`（只读 reviewer 的产物回收模式，机械落盘非自述采信）。
 
 ## 验收标准
 

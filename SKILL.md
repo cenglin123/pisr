@@ -39,7 +39,7 @@ PISR（Pi Subagents Run）以 headless `pi --mode json` 派发可选模型的、
 4. **格式**：schema、模板或示例。
 5. **边界与禁区**：不改输入、不写输出路径外；不确定术语保留原文并标 `[UNCERTAIN]`；知识截止可能早于今天；已确认术语不得"矫正"。
 6. **执行证据**：返回产物完整路径、字节大小与工具调用情况。
-7. **工具面声明**：本次派发的 `--tools` 集合及理由。产出型 worker 默认全工具；只读 reviewer 显式 `--tools read,grep,find,ls`（进程级硬白名单，模型不可调用 write/bash），并在 prompt 中说明"你只有只读工具"。reviewer 报告须含结构化 `reads:` 清单。
+7. **工具面声明**：本次派发的 `--tools` 集合及理由。产出型 worker 默认全工具，产物由子代理 write 直写；只读 reviewer 显式 `--tools read,grep,find,ls`（进程级硬白名单，模型不可调用 write/bash）并配 `--capture-reply`（驱动器把事件流最终回复**机械落盘**为产物——回复即产物，不存在"自述完成"信任面；exit≠0 或回复为空仍判失败）。reviewer 报告须含结构化 `reads:` 清单。
 
 路径约束不是安全隔离。长 prompt 写入 UTF-8 文件，由驱动器经 `@file` 注入（无命令行转义问题）；Windows 读取中文一律显式 UTF-8。手工调用（不走驱动器）时的 PowerShell 陷阱：
 
@@ -56,15 +56,15 @@ PISR（Pi Subagents Run）以 headless `pi --mode json` 派发可选模型的、
 # 产出型 worker（全工具）
 python scripts/pisr_dispatch.py dispatch --worker "<prompt-file>|<model>|<label>" --output-dir <dir> --output-pattern <unique-name> --watch
 
-# 只读 reviewer（硬白名单）
-python scripts/pisr_dispatch.py dispatch --worker "<prompt-file>|<model>|<label>" --tools read,grep,find,ls --output-dir <dir> --output-pattern <unique-name> --watch
+# 只读 reviewer（硬白名单 + 回复机械落盘）
+python scripts/pisr_dispatch.py dispatch --worker "<prompt-file>|<model>|<label>" --tools read,grep,find,ls --capture-reply --output-dir <dir> --output-pattern <unique-name> --watch
 ```
 
 驱动器负责错峰、看门狗、输出存在性/快照比对、事件流解析与 telemetry（`dispatch-log`），不替代编排判断。前台 timeout 足够时优先前台运行。派发基线为 `pi --mode json --no-session -nc -na`：不落会话文件、禁 context files、忽略项目本地资源（`-na` 是统一默认；`-a` 属例外须向用户披露）。
 
 看门狗硬事实：默认 15 分钟，可按 `max(10 分钟, 1.5 × 实测耗时)` 调整；模型端静默停滞（进程存活 + 事件流 0 字节）须按完整指纹裁决。`harness 前台超时 < 单轮耗时` 时也不能以无限轮询代替看护。用至少 **≥5 次** 同类遥测样本再调整默认模型或阈值，不能以个例翻转默认。失败切换阶梯（同模型一次 → 切换 family 一次 → 停止交回用户）与通道例外（失败明确归因于通道时先修通道，不计"同模型重派"名额）的操作细则见 [`refs/dispatch-patterns.md`](refs/dispatch-patterns.md)。
 
-驱动器会解析 `--mode json` 事件流做**工具越权审计**：实际 toolcall 超出 `--tools` 白名单即确定性失败（fail-closed）——它兜住 pi 配置漂移或扩展注入工具的场景；白名单本身的进程级约束由 pi 提供。
+驱动器会解析 `--mode json` 事件流做**工具越权审计**：实际 toolcall 超出 `--tools` 白名单即确定性失败（fail-closed，优先级高于 `--capture-reply` 落盘）——它兜住 pi 配置漂移或扩展注入工具的场景；白名单本身的进程级约束由 pi 提供。
 
 ### 4. 回收并验收
 
@@ -91,7 +91,7 @@ python scripts/pisr_dispatch.py dispatch --worker "<prompt-file>|<model>|<label>
 | 发布 executor | [`refs/release-executor.md`](refs/release-executor.md) | 输入合同、manifest 与保护默认 |
 | 陷阱完整表 | [`refs/pitfalls-reference.md`](refs/pitfalls-reference.md) | 事实/对策速查 |
 
-对抗评审的最小规范：只给完成审查所需的输入；把被审产物与 reviewer 输出隔离；要求结构化 `reads:`；审计发现提前获得答案或作弊性读取时，verdict 默认作废并以新会话重评。具体布局、禁读清单、审计裁定及例外都在 `refs/failure-modes.md`。只读 reviewer 的推荐工具面是 `read,grep,find,ls`（本机 pi 0.84.3 实证：模型无法调用 write，写入请求被拒且零产物）。
+对抗评审的最小规范：只给完成审查所需的输入；把被审产物与 reviewer 输出隔离；要求结构化 `reads:`；审计发现提前获得答案或作弊性读取时，verdict 默认作废并以新会话重评。具体布局、禁读清单、审计裁定及例外都在 `refs/failure-modes.md`。只读 reviewer 的推荐工具面是 `read,grep,find,ls` 配 `--capture-reply`（本机 pi 0.84.3 实证：模型无法调用 write，写入请求被拒且零产物；报告以最终回复形态由驱动器机械落盘）。
 
 `run --spec` 只搬运确定性步骤，不写 prompt、不判 verdict。其 schema、步骤类型、模板、journal 或提取契约失败均 fail-closed；只有已成功提取的值未命中具名 route，才会经必填 `"*"` pause 交回 agent。
 

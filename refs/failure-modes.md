@@ -24,7 +24,7 @@
 
 使用驱动器的 `--forbid-paths <path>` 为每个禁读根路径注入 prompt 副本；原 prompt 不改。它会在产物落盘后将 `reads:` 与禁读路径比较（Windows 路径大小写不敏感且子路径命中），记录 `clean`、`violated(<path>)` 或 `unavailable`。`unavailable` 不是 clean：补充人工审计或把报告视为无法证明独立性。
 
-reviewer 通道应同时使用 `--tools read,grep,find,ls`（进程级只读白名单）：即使 `reads:` 审计被绕过，写入与命令执行在工具面仍不可达，把污染面压缩到只剩"读了不该读的"。
+reviewer 通道应同时使用 `--tools read,grep,find,ls` + `--capture-reply`（进程级只读白名单；报告由驱动器从最终回复机械落盘）：即使 `reads:` 审计被绕过，写入与命令执行在工具面仍不可达，把污染面压缩到只剩"读了不该读的"。
 
 ### 3. 审计与裁定
 
