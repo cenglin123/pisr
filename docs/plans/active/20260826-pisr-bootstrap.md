@@ -39,8 +39,8 @@
 - [x] T8 docs/（CURRENT/STRUCTURE/overview/deployment/pitfalls/audit-checklist/CHANGELOG）+ AGENTS.md（PR squash 工作流全文沿用）+ agent_links repair + .githooks/pre-commit + README.md
 - [x] T9 离线验证全绿：`python scripts/verify_pisr_skill.py`、`agent_links.py check`、`audit.py check`、`pytest tests/ -q`；首个 commit
 - [x] T10 在线冒烟（真实消耗 3–5 次廉价 mimo 调用，已获用户授权）：preflight → selftest --model → dispatch 产出型 worker → dispatch 只读 reviewer（--tools read,grep,find,ls）→ telemetry/summary 检视
-- [ ] T11 部署 `~/.claude/skills/pisr`（排除 .git/tests/.githooks/docs/plans）+ GitHub `cenglin123/pisr` 推送
-- [ ] T12 .memory INDEX 记录事件；设计文档补记差异实证
+- [x] T11 部署 `~/.claude/skills/pisr`（排除 .git/tests/.githooks/docs/plans）+ GitHub `cenglin123/pisr` 推送
+- [x] T12 .memory INDEX 记录事件；设计文档补记差异实证
 
 ## 冒烟实证记录（2026-08-26）
 
