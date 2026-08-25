@@ -1,0 +1,4 @@
+* text=auto eol=lf
+
+# Completed audit archives are content-addressed; preserve their exact bytes.
+.converge/done/** -text
