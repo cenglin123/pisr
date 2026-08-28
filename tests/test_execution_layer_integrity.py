@@ -332,6 +332,69 @@ class TestCaptureReply:
             assert rc == mod.EXIT_DETERMINISTIC_FAILURE
 
 
+# ─── A5 · 事件流 schema 漂移报警 ─────────────────────────────────────
+class TestSchemaDrift:
+    """评审修正版判定：事件流非零字节 + 零个已识别 type → schema_drift_suspect；
+    空文件不是漂移（保持 exit_0_no_artifact）；有已识别事件更不是。"""
+
+    def test_unknown_types_only_is_drift(self):
+        with tempfile.TemporaryDirectory() as t:
+            td = Path(t)
+            ev = td / "wd-w0" / "events.jsonl"
+            ev.parent.mkdir(parents=True, exist_ok=True)
+            ev.write_text('{"type":"brand_new_event_v9"}\n{"type":"another_unknown"}\n',
+                          encoding="utf-8")
+            w = _worker(td, "w0", proc=_FakeProc(0), events=ev)
+            rc, rows = _run_watch(td, [w])
+            assert rc == mod.EXIT_DETERMINISTIC_FAILURE
+            assert any(r.get("outcome_detail") == "error:schema_drift_suspect"
+                       for r in rows), rows
+
+    def test_garbage_only_is_drift(self):
+        with tempfile.TemporaryDirectory() as t:
+            td = Path(t)
+            ev = td / "wd-w0" / "events.jsonl"
+            ev.parent.mkdir(parents=True, exist_ok=True)
+            ev.write_text("hello\nnot json at all\n", encoding="utf-8")
+            w = _worker(td, "w0", proc=_FakeProc(0), events=ev)
+            rc, rows = _run_watch(td, [w])
+            assert rc == mod.EXIT_DETERMINISTIC_FAILURE
+            assert any(r.get("outcome_detail") == "error:schema_drift_suspect"
+                       for r in rows), rows
+
+    def test_empty_events_not_drift(self):
+        """空文件（0 字节）≠ 漂移：保持 exit_0_no_artifact 语义。"""
+        with tempfile.TemporaryDirectory() as t:
+            td = Path(t)
+            w = _worker(td, "w0", proc=_FakeProc(0))  # events.jsonl 不存在
+            rc, rows = _run_watch(td, [w])
+            assert rc == mod.EXIT_DETERMINISTIC_FAILURE
+            assert any(r.get("outcome_detail") == "error:exit_0_no_artifact"
+                       for r in rows), rows
+            assert not any("schema_drift" in (r.get("outcome_detail") or "") for r in rows)
+
+    def test_recognized_events_not_drift(self):
+        """有已识别事件但零产物 → 普通exit_0_no_artifact，不误报漂移。"""
+        with tempfile.TemporaryDirectory() as t:
+            td = Path(t)
+            ev = _events(td, "w0", final_text="wrote nothing anywhere")
+            w = _worker(td, "w0", proc=_FakeProc(0), events=ev)
+            rc, rows = _run_watch(td, [w])
+            assert rc == mod.EXIT_DETERMINISTIC_FAILURE
+            assert any(r.get("outcome_detail") == "error:exit_0_no_artifact"
+                       for r in rows), rows
+
+    def test_parse_stream_counts_recognized(self):
+        with tempfile.TemporaryDirectory() as t:
+            td = Path(t)
+            ev = _events(td, "w0", tool_names=["read"])
+            parsed = mod._parse_event_stream(ev)
+            assert parsed["recognized"] >= 3  # session + tool_execution_start/end + message_end...
+            garbage = td / "wd-w0" / "g.jsonl"
+            garbage.write_text('{"type":"unknown_x"}\nnot json\n', encoding="utf-8")
+            assert mod._parse_event_stream(garbage)["recognized"] == 0
+
+
 # ─── A3 · PID 终止 ───────────────────────────────────────────────────
 class TestPidKill:
     def test_kill_uses_pid_tree_kill(self):

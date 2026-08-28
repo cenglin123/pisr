@@ -391,6 +391,16 @@ def _append_telemetry(
 
 # ─── pi 命令构造与事件流解析 ─────────────────────────────────────────
 
+# pi --mode json 的已识别事件类型（基线：pi 0.84.3 docs/json.md）。
+# 漂移判定用：事件流非零字节但 recognized==0 → 疑似 pi 升级后 schema 变更。
+PI_EVENT_TYPES = frozenset({
+    "session", "agent_start", "turn_start", "message_start", "message_update",
+    "message_end", "turn_end", "agent_end", "agent_settled",
+    "tool_execution_start", "tool_execution_update", "tool_execution_end",
+    "queue_update", "compaction_start", "compaction_end",
+})
+
+
 def _split_model(model: str) -> tuple[str, str]:
     """provider/model 二段拆分（白名单校验已保证恰好一个 /）。"""
     provider, _, model_id = model.partition("/")
@@ -423,11 +433,13 @@ def _build_pi_argv(model: str, *, tools: list[str] | None = None,
 def _parse_event_stream(path: Path) -> dict:
     """解析 pi --mode json 事件流，提取验收与遥测所需字段。
 
-    返回 {"final_text", "usage", "tool_names", "stop_reason", "session_id"}。
-    无法解析的行跳过（容忍流中断）；完全没有事件返回空结构（调用方按失败处理）。
+    返回 {"final_text", "usage", "tool_names", "stop_reason", "session_id", "recognized"}。
+    recognized = 类型属于 PI_EVENT_TYPES 的事件行数（漂移判定：文件非空但 recognized==0
+    → 疑似 pi 升级后事件 schema 变更）。无法解析的行跳过（容忍流中断）；
+    完全没有事件返回空结构（调用方按失败处理）。
     """
     result: dict = {"final_text": "", "usage": {}, "tool_names": [],
-                    "stop_reason": "", "session_id": ""}
+                    "stop_reason": "", "session_id": "", "recognized": 0}
     tool_names: list[str] = []
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
@@ -442,6 +454,8 @@ def _parse_event_stream(path: Path) -> dict:
         except json.JSONDecodeError:
             continue
         etype = ev.get("type", "")
+        if etype in PI_EVENT_TYPES:
+            result["recognized"] += 1
         if etype == "session":
             result["session_id"] = ev.get("id", "")
         elif etype == "message_end":
@@ -1316,6 +1330,13 @@ def _watch_loop(
                     continue
 
                 if exit_code == 0:
+                    events_bytes = (events_path.stat().st_size
+                                    if events_path and events_path.is_file() else 0)
+                    # 漂移判定（评审修正版）：文件非空但零个已识别事件类型 →
+                    # 疑似 pi 升级后事件 schema 变更，与"零产物"区分开——
+                    # 前者先核对 pi 版本与事件流格式，勿盲目重派。
+                    schema_drift = (events_bytes > 0
+                                    and ev.get("recognized", 0) == 0)
                     od = "error:exit_0_no_artifact"
                     reason = "pi_exit_0_no_artifact"
                     tail = (ev.get("final_text") or stderr_text or "").strip().replace("\n", " ")[:200]
@@ -1329,6 +1350,12 @@ def _watch_loop(
                         human = (f"[pisr] ⚠️ {p['label']} 期望产物未落盘，但检测到疑似产物"
                                  f"命名与 pattern 不符：{', '.join(mismatch[:5])}"
                                  f"（产物或已有效落盘——先核对文件名再判定，勿按 0 产物重派）")
+                    elif schema_drift:
+                        od = "error:schema_drift_suspect"
+                        reason = "pi_schema_drift_suspect"
+                        human = (f"[pisr] ⚠️ {p['label']} 事件流 {events_bytes}B 但零个已识别事件类型"
+                                 f"（疑似 pi 升级后事件 schema 变更）——先核对 pi --version 与"
+                                 f"事件流格式并复跑 selftest，勿盲目重派")
                 else:
                     od = _parse_outcome_detail("error", exit_code=exit_code, log_text=stderr_text)
                     reason = f"pi_exit_{exit_code}"

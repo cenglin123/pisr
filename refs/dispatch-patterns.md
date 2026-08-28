@@ -124,6 +124,21 @@ $jobs | Remove-Job
 
 pi 的 PISR 派发统一 `--no-session`（不落 `~/.pi/agent/sessions/`，不污染用户交互会话）。默认设计为**一次投递、文件回收**，不依赖会话续接；需要会话续接的场景属于 OCSR 的分工面（opencode `--continue`/`--session`/`--fork`）。pi 本身具备 `pi -c` / `--session` / `--fork` 能力，但 PISR 不把它们纳入派发协议——手工使用时以 `pi --help` 实测为准。
 
+## 驱动器中途被杀（孤儿 worker）
+
+驱动器进程死亡时，已启动的 pi 子进程**不会**随之退出——它们继续消耗模型调用，但无人结案、无人记账。
+
+**指纹**：dispatch-log 最后一批记录是 launched 而无对应 landed/failed；`$TEMP/pisr_dispatch_<batch_id>/` 目录存在且其中 events.jsonl 持续增长。
+
+**手工处置**（当前无自动化子命令，按"未经失误证据不新增机制"约束，自动化等真实场景再立项）：
+
+1. 定位 batch 工作目录，按 label 找到各 worker 的 work-dir（pid 见 ledger launched 行或让 process explorer 确认）；
+2. 若期望产物已落盘且有效：按主文件"回收并验收"正常结案，补记遥测（note 注明 orphan recovered）；
+3. 若需止损：按 PID 精确 `taskkill /F /T /PID <pid>`——禁止按镜像名批量杀（node.exe 是一切 Node 进程的宿主）；
+4. 事件：向 dispatch-log 追加一行说明（手工追加 JSONL 即可）。
+
+**预防**：长看护场景把驱动器跑在不受 harness 管理的通道（独立终端 / 计划任务），或外层套 `monitor --watch-dir`；驱动器自身的 stdout/stderr 都落盘在 batch 目录，死后可事后取证。
+
 ## 基本命令与长 prompt 文件处理
 
 > 由主文件的默认派发闭环按需链接的可复制命令模板。
