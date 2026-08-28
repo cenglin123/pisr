@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-08-26（PR-A：防御性加固，独立评议后落地）
+
+- **schema 漂移报警**：`_parse_event_stream` 新增 `recognized` 计数（已识别事件类型数）；exit=0 且事件流非零字节但零个已识别类型时，outcome_detail 记 `error:schema_drift_suspect`（区别于 `exit_0_no_artifact`；空文件不算漂移）。判定条件经独立评审修正：区分"空文件"与"有内容全不识别"。
+- **stub-pi 端到端集成测试**（tests/stub_pi.py + test_e2e_stub_pi.py）：PI_BIN 指向测试桩，真实 subprocess 链路（spawn/重定向/poll/taskkill/capture/漂移）离线覆盖，此前全部 mock Popen 无此层。4 用例 ~2s。
+- **docs**：dispatch-patterns.md 新增"驱动器中途被杀（孤儿 worker）"小节（指纹/手工处置/预防；自动化按证据门控后置）。
+- 评审背景：fresh-context 只读 reviewer（pisr 自驱）评议改进计划，15 项裁定 + PR 重分组；其中 2 项事实断言经代码核实驳回（详见评审报告存档）。
+
 ## 2026-08-26
 
 ### 初始化：PISR 仓库（ocsr 对等移植，pi 后端）
