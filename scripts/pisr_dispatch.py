@@ -21,7 +21,7 @@ pisr_dispatch.py — pisr (Pi Subagents Run) 派发后端（库内执行层，�
     --watch --timeout 15
 
   python scripts/pisr_dispatch.py selftest            # 离线自检
-  python scripts/pisr_dispatch.py selftest --model cc-switch-xiaomi-mi-mo/mimo-v2.5  # 在线冒烟
+  python scripts/pisr_dispatch.py selftest --model xiaomi/mimo-v2.5  # 在线冒烟
   python scripts/pisr_dispatch.py telemetry
 
 遥测日志: ~/.pisr/dispatch-log.jsonl（本机共享，预期行为）

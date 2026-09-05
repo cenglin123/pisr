@@ -15,7 +15,7 @@
 | pi 会话概念与派发无关 | PISR 统一 `--no-session`（不落 `~/.pi/agent/sessions/`）；pi 的 `-c/--session/--fork` 是交互会话能力，不是 live 子代理句柄 | 不要当上下文继承机制用；需要续接的场景归 OCSR |
 | stdout 中文显示乱码（Windows） | GBK/UTF-8 编码不匹配导致显示层乱码，不意味文件内容损坏 | 驱动器主链路全 UTF-8 落盘；手工 `*>` 重定向注意 PS5.1 落盘 UTF-16LE；日志乱码时用 UTF-8 重读区分显示问题与文件损坏 |
 | 子代理自我报告不可信 | 会生成看似成功的报告而实际 0 产物；会反向"矫正"正确术语 | [自足 prompt](../SKILL.md) + [四步验收](../SKILL.md) + 事件流 usage/toolcall 审计 |
-| `usage.cost=0` 不自动等于免费 | custom provider（cc-switch）事件流的 cost 字段常为 0——价格元数据缺失，不是免费证明 | 排除模型时结合 context 限制、toolcall 能力、试点证据综合判断，标为启发式裁决 |
+| `usage.cost=0` 不自动等于免费 | 事件流 cost 字段常为 0——价格元数据可能缺失（任何 provider 都可能，非仅 custom 网关），不是免费证明 | 排除模型时结合 context 限制、toolcall 能力、试点证据综合判断，标为启发式裁决 |
 | harness 超时截断 / 后台通道 kill | 单次派发常超 2 分钟；部分 harness 的后台任务机制会终止 pi 进程 | 前台执行 + 调大 harness 侧 timeout；后台失败指纹 = 事件流 0 字节 + 无产物文件 |
 | 静默烧钱 + 无界重派 | 扇出 N 个 worker = N 次计费调用；无上限重派可形成计费循环 | 派发前报数量上限与所选模型，每 worker 最多 3 次尝试，未经新鲜授权不突破；先派 1 个试点再从 2 并发上探，遇 429/超时回退 |
 | harness 前台超时 < 单轮耗时 | 判断密集角色单轮 20–30 min，多数 harness 前台上限 ≤10 min | 改用 [脱管派发模式](dispatch-patterns.md)（Popen/Start-Process + 双监视观察器） |

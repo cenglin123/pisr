@@ -19,8 +19,8 @@ python scripts/verify_pisr_skill.py
 在线冒烟（消耗一次真实模型调用）：
 
 ```powershell
-python scripts/pisr_dispatch.py preflight --model cc-switch-xiaomi-mi-mo/mimo-v2.5
-python scripts/pisr_dispatch.py selftest --model cc-switch-xiaomi-mi-mo/mimo-v2.5
+python scripts/pisr_dispatch.py preflight --model xiaomi/mimo-v2.5
+python scripts/pisr_dispatch.py selftest --model xiaomi/mimo-v2.5
 ```
 
 模型可用性和 CLI 参数是实时环境事实。升级 pi 后，应重新验证 `--mode json`、`--tools`、`-nc`、`-na`、`--no-session`、`@file` 注入与事件流 schema（`session`/`message_end`/`tool_execution_start`/`agent_end` 事件类型与 usage 字段）——`selftest` 覆盖主链路。
