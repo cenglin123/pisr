@@ -34,4 +34,4 @@
 
 **保护默认**：凭据文件（`.env*`、`*.pem`、路径含 `secret`/`credential`/`api_key`/`sk-` 字面量）与其他任务的临时/收敛目录默认视为不可删除项，不得出现在 `cleanup_manifest` 中——即使看起来像"垃圾文件"。
 
-**模型选择**：仓库默认配置中，机械收尾（文档同步、manifest 生成、数字核对）用执行档 `cc-switch-xiaomi-mi-mo/mimo-v2.5`（见 [模型默认池](model-defaults.md)）；涉及需要判断的一致性核验按判断密集角色升级。PISR 加成：release executor 属产物型 worker（要写 manifest），**不要**加只读白名单；如需限制其读取面，用 `--forbid-paths`。
+**模型选择**：仓库默认配置中，机械收尾（文档同步、manifest 生成、数字核对）用执行档 `xiaomi/mimo-v2.5`（见 [模型默认池](model-defaults.md)）；涉及需要判断的一致性核验按判断密集角色升级（涉及 manifest 内容核验或与原契约对齐时，参考 `refs/model-defaults.md` 的"高质量 verdict"档）。PISR 加成：release executor 属产物型 worker（要写 manifest），**不要**加只读白名单；如需限制其读取面，用 `--forbid-paths`。

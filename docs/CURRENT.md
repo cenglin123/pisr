@@ -13,7 +13,7 @@
 
 ## 环境基线
 
-- pi 0.84.3；默认白名单：`cc-switch-xiaomi-mi-mo/mimo-v2.5`、`cc-switch-xiaomi-mi-mo/mimo-v2.5-pro`
+- pi 0.84.3；默认白名单：`xiaomi/mimo-v2.5`、`xiaomi/mimo-v2.5-pro`、`minimax-cn/MiniMax-M3`、`deepseek/deepseek-v4-flash`（高质量 verdict 档：MiniMax-M3 ↔ deepseek-v4-flash 异源双视角）
 - 实证（2026-08-26）：`@file` prompt 注入 ✅；`--tools read,grep,find,ls` 硬白名单（模型无 write、零产物）✅；`--mode json` 事件流含 usage/toolcall ✅
 
 ## 本轮新增能力（冒烟中固化）

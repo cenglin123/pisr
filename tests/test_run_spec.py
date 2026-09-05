@@ -408,7 +408,7 @@ class TestCli:
     version: 1
     run: {id: t, workdir: %s}
     steps:
-      - {id: a, type: dispatch, model: cc-switch-xiaomi-mi-mo/mimo-v2.5, prompt: p.txt, output: "{{run.workdir}}/o.md"}
+      - {id: a, type: dispatch, model: xiaomi/mimo-v2.5, prompt: p.txt, output: "{{run.workdir}}/o.md"}
 """ % (td / "wd").as_posix())
             r = self._run(["run", "--spec", str(p)])
         assert r.returncode != 0, r.stdout
@@ -421,7 +421,7 @@ class TestCli:
     version: 1
     run: {id: t, workdir: wd}
     steps:
-      - {id: a, type: dispatch, model: cc-switch-xiaomi-mi-mo/mimo-v2.5, prompt: p.txt, output: o}
+      - {id: a, type: dispatch, model: xiaomi/mimo-v2.5, prompt: p.txt, output: o}
 """)
             (Path(t) / "p.txt").write_text("x", encoding="utf-8")
             r = self._run(["run", "--spec", str(p), "--validate"])

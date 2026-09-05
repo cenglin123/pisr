@@ -109,7 +109,7 @@ REAL_EVENTS = """\
 {"type":"tool_execution_end","toolCallId":"tc1","toolName":"read","result":"ok","isError":false}
 {"type":"tool_execution_start","toolCallId":"tc2","toolName":"grep","args":{"pattern":"verdict"}}
 {"type":"tool_execution_end","toolCallId":"tc2","toolName":"grep","result":"2 matches","isError":false}
-{"type":"message_end","message":{"role":"assistant","content":[{"type":"thinking","thinking":"..."},{"type":"text","text":"MODEJSON_OK"}],"api":"openai-completions","provider":"cc-switch-xiaomi-mi-mo","model":"mimo-v2.5","usage":{"input":2241,"output":18,"cacheRead":3072,"cacheWrite":0,"reasoning":13,"totalTokens":5331,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop"}}
+{"type":"message_end","message":{"role":"assistant","content":[{"type":"thinking","thinking":"..."},{"type":"text","text":"MODEJSON_OK"}],"api":"openai-completions","provider":"xiaomi","model":"mimo-v2.5","usage":{"input":2241,"output":18,"cacheRead":3072,"cacheWrite":0,"reasoning":13,"totalTokens":5331,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop"}}
 {"type":"agent_end","messages":[]}
 {"type":"agent_settled"}
 """

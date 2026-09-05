@@ -11,7 +11,7 @@ pi --version
 pi --list-models
 # <provider/model> 必须存在于 config/allowed-models.json
 python scripts/pisr_dispatch.py selftest
-python scripts/pisr_dispatch.py preflight --model cc-switch-xiaomi-mi-mo/mimo-v2.5
+python scripts/pisr_dispatch.py preflight --model xiaomi/mimo-v2.5
 ```
 
 运行规则、prompt 七要素、产物回收和模型分工以 [SKILL.md](SKILL.md) 为准。
