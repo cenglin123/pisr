@@ -102,6 +102,19 @@ DRIFT_PATTERNS: dict[str, list[str]] = {
     "Terraform":         ["terraform", "opentofu"],
 }
 
+# Word-boundary compiled patterns: bare substring matching produced false
+# hits ("ws" inside "windows") and bogus drift reports. Each keyword — and
+# the tech name itself — is matched with \b boundaries; re.escape keeps
+# multi-token keywords like "socket.io" literal.
+DRIFT_KEYWORD_RES: dict[str, list[re.Pattern[str]]] = {
+    tech: [re.compile(rf"\b{re.escape(word)}\b") for word in [tech.lower(), *keywords]]
+    for tech, keywords in DRIFT_PATTERNS.items()
+}
+
+
+def _mentions(patterns: list[re.Pattern[str]], text: str) -> bool:
+    return any(p.search(text) for p in patterns)
+
 
 # ---------------------------------------------------------------------------
 # helpers
@@ -303,10 +316,11 @@ def _drift_check() -> list[dict[str, Any]]:
 
     # Doc mentions → check manifest.
     for tech, keywords in DRIFT_PATTERNS.items():
-        in_docs = tech.lower() in doc_text or any(kw in doc_text for kw in keywords)
+        patterns = DRIFT_KEYWORD_RES[tech]
+        in_docs = _mentions(patterns, doc_text)
         if not in_docs:
             continue
-        in_manifest = any(kw in manifest_text for kw in keywords)
+        in_manifest = _mentions(patterns, manifest_text)
         if not in_manifest:
             results.append({
                 "kind": "drift",
@@ -324,10 +338,11 @@ def _drift_check() -> list[dict[str, Any]]:
 
     # Manifest has → doc silent.
     for tech, keywords in DRIFT_PATTERNS.items():
-        in_manifest = any(kw in manifest_text for kw in keywords)
+        patterns = DRIFT_KEYWORD_RES[tech]
+        in_manifest = _mentions(patterns, manifest_text)
         if not in_manifest:
             continue
-        in_docs = tech.lower() in doc_text or any(kw in doc_text for kw in keywords)
+        in_docs = _mentions(patterns, doc_text)
         if not in_docs:
             results.append({
                 "kind": "drift",
