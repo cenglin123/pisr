@@ -69,7 +69,7 @@ python scripts/pisr_dispatch.py monitor --process-name node.exe --watch-dir <out
 
 ### 验收环
 
-orchestrator 各 Phase 完成后、向 planner 汇报前，必须派**非 executor 族** acceptance-reviewer（与当次执行 executor 不同 family 即可；只读场景叠加 `--tools read,grep,find,ls`），任务是执行确定性验收命令（pytest / CLI / 真实数据源），不是读报告写意见。
+orchestrator 各 Phase 完成后、向 planner 汇报前，必须派**非 executor 族** acceptance-reviewer（与当次执行 executor 不同 family 即可；只读场景叠加 `--tools read,grep,find,ls`，需跑验收命令时用运行时验证档 `read,grep,find,ls,bash`、write 仍禁——见 [SKILL.md 七要素第 7 项](../SKILL.md)），任务是执行确定性验收命令（pytest / CLI / 真实数据源），不是读报告写意见。
 
 - 修复循环由 orchestrator 管理；反复失败直至重试上限、或 verdict=需重新设计时，才升级 planner 介入
 - planner 终验 = 证据链核验：复跑核心测试 + 审查 verdict 链 + 机械校验（verify-ownership） + 抽查关键产物

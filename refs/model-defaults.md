@@ -15,4 +15,6 @@
 | 常规 verdict / 中间档（语义审查、verdict、meta 判断） | `xiaomi/mimo-v2.5-pro` | 同上 | MiMo 同 family 升级档；需要跨 family 异构视角时降级或升级到下面两档 |
 | **高质量 verdict**（meta-judge、跨 family 异构评议、需要"双强模型对抗"的高 stakes 场景） | `minimax-cn/MiniMax-M3` ↔ `deepseek/deepseek-v4-flash` | 同上 | 异源双视角（minimax-cn vs deepseek），单 family 时优先 MiniMax-M3，需要对抗时二选一并行；与"廉价"默认池定位不同，属高成本档，慎用作大批量 worker |
 
+运行时验证档（acceptance 验收、需跑测试佐证的评审）：工具面在上表只读档基础上加 `bash`（write 仍禁），合同与审计面细则见 [SKILL.md 七要素第 7 项](../SKILL.md)。
+
 提醒：OCSR 默认池与 PISR 默认池各自独立配置，互不引用。

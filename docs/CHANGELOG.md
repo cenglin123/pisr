@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 2026-09-06（reviewer 工具面解冻：运行时验证档）
+
+- **规则变更**：reviewer `--tools` 从固定 `read,grep,find,ls` 解冻为"默认四件套；审计任务需运行时验证（跑测试/lint 等只读命令佐证）时可加 `bash`，write 始终禁"。动机：运行时验证评审视角此前只能拆 executor 写验证报告 + reviewer 读报告的两次派发（二手证据接力），现可一次派发完成第一手运行时审计。驱动器/tests/遥测 schema/退出码契约零改动（白名单机制本就参数化，`PI_BUILTIN_TOOLS` 已含 bash）。
+- **文档同步**：SKILL.md 七要素第 7 项 + 派发示例三档；refs/failure-modes.md §fresh 对抗评审（如实表述：加入 bash 后写入在进程级可达，只读性靠 prompt 钉死 + 报告列明命令 + 事后审计核对）；refs/dispatch-patterns.md §通道判据与 PISR 加成句；refs/hierarchical-command.md 验收环与 refs/model-defaults.md 角色表补运行时验证档交叉引用。
+- **独立复查**：fresh 只读 reviewer（PISR 自驱，deepseek-v4-flash）审 diff，verdict=PASS 零阻断；采纳 3 条非阻断建议（"显式声明/此档位下"限定词、hierarchical-command 与 model-defaults 交叉引用、bash 间接写入的如实表述内联进七要素）。minimax-cn 通道无 API key（auth 失败、0 次真实调用），按通道例外切换 deepseek。
+- **bash 档在线冒烟实证**（pi 0.84.3 + deepseek-v4-flash）：bash 工具可用；事件流 `tool_execution_start` 的 `toolName:"bash"`，越权审计正确计量（clean）；`--capture-reply` 组合正常落盘；模型遵守"仅只读命令"合同（2 次 toolcall 全为规定命令，无写入尝试）。
+
 ## 2026-08-26（PR-A：防御性加固，独立评议后落地）
 
 - **schema 漂移报警**：`_parse_event_stream` 新增 `recognized` 计数（已识别事件类型数）；exit=0 且事件流非零字节但零个已识别类型时，outcome_detail 记 `error:schema_drift_suspect`（区别于 `exit_0_no_artifact`；空文件不算漂移）。判定条件经独立评审修正：区分"空文件"与"有内容全不识别"。

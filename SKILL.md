@@ -39,7 +39,7 @@ PISR（Pi Subagents Run）以 headless `pi --mode json` 派发可选模型的、
 4. **格式**：schema、模板或示例。
 5. **边界与禁区**：不改输入、不写输出路径外；不确定术语保留原文并标 `[UNCERTAIN]`；知识截止可能早于今天；已确认术语不得"矫正"。
 6. **执行证据**：返回产物完整路径、字节大小与工具调用情况。
-7. **工具面声明**：本次派发的 `--tools` 集合及理由。产出型 worker 默认全工具，产物由子代理 write 直写；只读 reviewer 显式 `--tools read,grep,find,ls`（进程级硬白名单，模型不可调用 write/bash）并配 `--capture-reply`（驱动器把事件流最终回复**机械落盘**为产物——回复即产物，不存在"自述完成"信任面；exit≠0 或回复为空仍判失败）。reviewer 报告须含结构化 `reads:` 清单。
+7. **工具面声明**：本次派发的 `--tools` 集合及理由。产出型 worker 默认全工具，产物由子代理 write 直写；reviewer 配 `--capture-reply`（驱动器把事件流最终回复**机械落盘**为产物——回复即产物，不存在"自述完成"信任面；exit≠0 或回复为空仍判失败），工具面须显式声明：默认档 `--tools read,grep,find,ls`（进程级硬白名单，此档位下模型不可调用 write/bash）；审计任务需运行时验证（跑测试/lint 等只读命令佐证）时可加 `bash`——**write 始终禁**（生成/评估分离：reviewer 可观察运行时，不可改产物或修复），但注意加入 bash 后写入在进程级可达（如 echo 重定向），只读性靠 prompt 钉死只读命令、报告列明实际执行的命令与退出码、事后审计核对来落实。reviewer 报告须含结构化 `reads:` 清单。
 
 路径约束不是安全隔离。长 prompt 写入 UTF-8 文件，由驱动器经 `@file` 注入（无命令行转义问题）；Windows 读取中文一律显式 UTF-8。手工调用（不走驱动器）时的 PowerShell 陷阱：
 
@@ -56,8 +56,11 @@ PISR（Pi Subagents Run）以 headless `pi --mode json` 派发可选模型的、
 # 产出型 worker（全工具）
 python scripts/pisr_dispatch.py dispatch --worker "<prompt-file>|<model>|<label>" --output-dir <dir> --output-pattern <unique-name> --watch
 
-# 只读 reviewer（硬白名单 + 回复机械落盘）
+# 只读 reviewer（默认硬白名单 + 回复机械落盘）
 python scripts/pisr_dispatch.py dispatch --worker "<prompt-file>|<model>|<label>" --tools read,grep,find,ls --capture-reply --output-dir <dir> --output-pattern <unique-name> --watch
+
+# 验证型 reviewer（白名单 + bash：可跑只读命令佐证，write 仍禁）
+python scripts/pisr_dispatch.py dispatch --worker "<prompt-file>|<model>|<label>" --tools read,grep,find,ls,bash --capture-reply --output-dir <dir> --output-pattern <unique-name> --watch
 ```
 
 驱动器负责错峰、看门狗、输出存在性/快照比对、事件流解析与 telemetry（`dispatch-log`），不替代编排判断。前台 timeout 足够时优先前台运行。派发基线为 `pi --mode json --no-session -nc -na`：不落会话文件、禁 context files、忽略项目本地资源（`-na` 是统一默认；`-a` 属例外须向用户披露）。
@@ -91,7 +94,7 @@ python scripts/pisr_dispatch.py dispatch --worker "<prompt-file>|<model>|<label>
 | 发布 executor | [`refs/release-executor.md`](refs/release-executor.md) | 输入合同、manifest 与保护默认 |
 | 陷阱完整表 | [`refs/pitfalls-reference.md`](refs/pitfalls-reference.md) | 事实/对策速查 |
 
-对抗评审的最小规范：只给完成审查所需的输入；把被审产物与 reviewer 输出隔离；要求结构化 `reads:`；审计发现提前获得答案或作弊性读取时，verdict 默认作废并以新会话重评。具体布局、禁读清单、审计裁定及例外都在 `refs/failure-modes.md`。只读 reviewer 的推荐工具面是 `read,grep,find,ls` 配 `--capture-reply`（本机 pi 0.84.3 实证：模型无法调用 write，写入请求被拒且零产物；报告以最终回复形态由驱动器机械落盘）。
+对抗评审的最小规范：只给完成审查所需的输入；把被审产物与 reviewer 输出隔离；要求结构化 `reads:`；审计发现提前获得答案或作弊性读取时，verdict 默认作废并以新会话重评。具体布局、禁读清单、审计裁定及例外都在 `refs/failure-modes.md`。reviewer 的默认工具面是 `read,grep,find,ls` 配 `--capture-reply`（本机 pi 0.84.3 实证：模型无法调用 write，写入请求被拒且零产物；报告以最终回复形态由驱动器机械落盘）；需运行时验证佐证的评审可加 `bash`，合同细则见七要素第 7 项。
 
 `run --spec` 只搬运确定性步骤，不写 prompt、不判 verdict。其 schema、步骤类型、模板、journal 或提取契约失败均 fail-closed；只有已成功提取的值未命中具名 route，才会经必填 `"*"` pause 交回 agent。
 
