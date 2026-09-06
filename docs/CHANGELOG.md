@@ -2,6 +2,8 @@
 
 ## 2026-09-06（reviewer 工具面解冻：运行时验证档）
 
+- **audit 工具词边界修复**：drift 检查的子串匹配会把 "windows"（含 "ws"）误判为"文档提到 WebSocket"。改为 `\b` 词边界正则（`DRIFT_KEYWORD_RES` + `_mentions`），tests/test_audit.py 补 2 个回归用例。pisr 当前无 manifest（drift 检查跳过）故此前未显形；ocsr 仓库同 patch 同步修复（其 #3 引入 package.json 后曾持续误报）。
+
 - **规则变更**：reviewer `--tools` 从固定 `read,grep,find,ls` 解冻为"默认四件套；审计任务需运行时验证（跑测试/lint 等只读命令佐证）时可加 `bash`，write 始终禁"。动机：运行时验证评审视角此前只能拆 executor 写验证报告 + reviewer 读报告的两次派发（二手证据接力），现可一次派发完成第一手运行时审计。驱动器/tests/遥测 schema/退出码契约零改动（白名单机制本就参数化，`PI_BUILTIN_TOOLS` 已含 bash）。
 - **文档同步**：SKILL.md 七要素第 7 项 + 派发示例三档；refs/failure-modes.md §fresh 对抗评审（如实表述：加入 bash 后写入在进程级可达，只读性靠 prompt 钉死 + 报告列明命令 + 事后审计核对）；refs/dispatch-patterns.md §通道判据与 PISR 加成句；refs/hierarchical-command.md 验收环与 refs/model-defaults.md 角色表补运行时验证档交叉引用。
 - **独立复查**：fresh 只读 reviewer（PISR 自驱，deepseek-v4-flash）审 diff，verdict=PASS 零阻断；采纳 3 条非阻断建议（"显式声明/此档位下"限定词、hierarchical-command 与 model-defaults 交叉引用、bash 间接写入的如实表述内联进七要素）。minimax-cn 通道无 API key（auth 失败、0 次真实调用），按通道例外切换 deepseek。
