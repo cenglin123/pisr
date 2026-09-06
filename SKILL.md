@@ -23,7 +23,7 @@ PISR（Pi Subagents Run）以 headless `pi --mode json` 派发可选模型的、
 
 ### 1. 固定模型、调用上限与路径
 
-可用 qualified ID（`provider/model` 二段）由用户可编辑的 [`config/allowed-models.json`](config/allowed-models.json) 唯一决定；仓库默认含 `xiaomi/mimo-v2.5`、`xiaomi/mimo-v2.5-pro`、`minimax-cn/MiniMax-M3`、`deepseek/deepseek-v4-flash`（最后两条作为高质量 verdict 档，详见 `refs/model-defaults.md`）。修改该 JSON 后重新启动命令即可加载；它必须是非空、无重复、无首尾空白的 `provider/model` 字符串数组，格式错误会 fail-closed。`selftest` 未传 `--model` 时使用配置首项。首次使用先运行 `pi --list-models`，从目录表原样复制 provider 与 model 列；禁止凭记忆拼接或裸名猜测。再用 `python scripts/pisr_dispatch.py preflight --model <provider/model>` 验证选定模型可用性（目录检查零调用；真实探测会消耗一次模型调用）。模型角色资料见 [`refs/model-defaults.md`](refs/model-defaults.md)。注意 `pi --list-models` 目录**不含价格**，价格元数据可能缺失；事件流中的 usage/cost 字段为启发式风险信号，cost=0 不能单独证明模型免费或强弱。
+可用 qualified ID（`provider/model` 二段）由用户可编辑的 [`config/allowed-models.json`](config/allowed-models.json) 唯一决定；仓库默认含 `xiaomi/mimo-v2.5`、`xiaomi/mimo-v2.5-pro`、`minimax-cn/MiniMax-M3`、`deepseek/deepseek-v4-flash`（最后两条作为高质量 verdict 档，详见 `refs/model-defaults.md`）。修改该 JSON 后重新启动命令即可加载；它必须是非空、无重复、无首尾空白的 `provider/model` 字符串数组，格式错误会 fail-closed。`selftest` 未传 `--model` 时使用配置首项。仓库默认白名单来自作者本机目录，其他机器安装的 pi 未必提供相同模型——每台机器首次使用前（以及换机、通道异常归因后）先运行 `pi --list-models` 看本地实际有哪些模型，从目录表原样复制 provider 与 model 列更新 [`config/allowed-models.json`](config/allowed-models.json) 再决定用哪个；禁止凭记忆拼接或裸名猜测。派发前用 `python scripts/pisr_dispatch.py preflight --model <provider/model>` 验证选定模型可用性（目录检查零调用；真实探测会消耗一次模型调用）。模型角色资料见 [`refs/model-defaults.md`](refs/model-defaults.md)。注意 `pi --list-models` 目录**不含价格**，价格元数据可能缺失；事件流中的 usage/cost 字段为启发式风险信号，cost=0 不能单独证明模型免费或强弱。
 
 派发前向用户披露模型与调用总上限；未经新鲜授权**不突破**该上限。每个 worker 最多 **3 次总尝试**。有副作用但不能证明幂等性的任务，**禁止自动重派**（驱动器自身也不做任何自动重派，重派决策归顶层 agent）。
 
