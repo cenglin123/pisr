@@ -24,7 +24,7 @@
 
 使用驱动器的 `--forbid-paths <path>` 为每个禁读根路径注入 prompt 副本；原 prompt 不改。它会在产物落盘后将 `reads:` 与禁读路径比较（Windows 路径大小写不敏感且子路径命中），记录 `clean`、`violated(<path>)` 或 `unavailable`。`unavailable` 不是 clean：补充人工审计或把报告视为无法证明独立性。
 
-reviewer 通道应同时使用 `--tools read,grep,find,ls` + `--capture-reply`（进程级只读白名单；报告由驱动器从最终回复机械落盘）：即使 `reads:` 审计被绕过，写入与命令执行在工具面仍不可达，把污染面压缩到只剩"读了不该读的"。
+reviewer 通道应同时使用 `--capture-reply`（报告由驱动器从最终回复机械落盘）+ 进程级工具白名单：默认 `--tools read,grep,find,ls`——即使 `reads:` 审计被绕过，写入与命令执行在工具面仍不可达，把污染面压缩到只剩"读了不该读的"。审计任务需要运行时验证（跑测试/lint 等只读命令佐证）时可扩为 `read,grep,find,ls,bash`：**write 始终禁**（生成/评估分离），prompt 必须钉死 bash 仅限只读命令、禁止任何写入与修复，报告须列出实际执行的命令与退出码。此时污染面扩为"读了不该读的 + bash 命令的副作用"，命令只读性靠报告列明与事后审计核对；白名单外的工具调用仍由驱动器越权审计 fail-closed。
 
 ### 3. 审计与裁定
 

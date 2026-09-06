@@ -4,7 +4,7 @@
 
 ## 通道选择判据（PISR / OCSR / 框架原生子代理）
 
-**通道选择判据**（某角色用 PISR、OCSR 还是框架原生子代理）：不枚举任务类型，按通用原则判断——(a) **角色的价值来源**：评审的价值在跨 family 覆盖与上下文隔离；需要**只读硬约束**（防止 reviewer 意外改写现场）时 PISR 的 `--tools read,grep,find,ls` 是唯一提供进程级工具面白名单的通道；需要 opencode 侧模型池或会话续跑时走 OCSR。(b) **协议成本与模型成本的双侧账本**：自足 prompt + 产物回收 + 看门狗是固定协议开销，任务越小占比越高；临界点无固定值，以本文件 `dispatch-log` 遥测（`wall_min` / `artifact_bytes` / `usage_total_tokens`）校准。判别样例（直觉参考，非决策规则）：几行的文字修复用原生 executor；批量转换、长收尾、成本敏感场景用 PISR；需要 opencode 模型池的评审用 OCSR。
+**通道选择判据**（某角色用 PISR、OCSR 还是框架原生子代理）：不枚举任务类型，按通用原则判断——(a) **角色的价值来源**：评审的价值在跨 family 覆盖与上下文隔离；需要**只读硬约束**（防止 reviewer 意外改写现场）时 PISR 的 `--tools` 白名单（如 `read,grep,find,ls`）是唯一提供进程级工具面白名单的通道；需要 opencode 侧模型池或会话续跑时走 OCSR。(b) **协议成本与模型成本的双侧账本**：自足 prompt + 产物回收 + 看门狗是固定协议开销，任务越小占比越高；临界点无固定值，以本文件 `dispatch-log` 遥测（`wall_min` / `artifact_bytes` / `usage_total_tokens`）校准。判别样例（直觉参考，非决策规则）：几行的文字修复用原生 executor；批量转换、长收尾、成本敏感场景用 PISR；需要 opencode 模型池的评审用 OCSR。
 
 ## 退出码契约（`pisr_dispatch.py dispatch --watch`）
 
@@ -33,7 +33,7 @@
 
 ## fresh 对抗评审
 
-评审的布局隔离、`--forbid-paths` 注入、`reads:` 审计及作废/新会话重派，完整且唯一地定义在 [`failure-modes.md`](failure-modes.md#fresh-对抗评审完整闭环)。本文件不重复该规则。PISR 加成：reviewer 通道默认 `--tools read,grep,find,ls` + `--capture-reply`，写入在进程级不可达（报告由驱动器从事件流最终回复机械落盘，exit≠0/空回复不落盘）——布局污染的风险面只剩"读了不该读的"，由 `reads:` 审计兜底；越权 toolcall 审计优先于落盘。
+评审的布局隔离、`--forbid-paths` 注入、`reads:` 审计及作废/新会话重派，完整且唯一地定义在 [`failure-modes.md`](failure-modes.md#fresh-对抗评审完整闭环)。本文件不重复该规则。PISR 加成：reviewer 通道默认 `--tools read,grep,find,ls` + `--capture-reply`，此档位下写入在进程级不可达（报告由驱动器从事件流最终回复机械落盘，exit≠0/空回复不落盘）——布局污染的风险面只剩"读了不该读的"，由 `reads:` 审计兜底；需运行时验证佐证的评审可加 `bash`（write 仍禁，合同与审计面变化见 failure-modes.md §fresh 对抗评审）；越权 toolcall 审计优先于落盘。
 
 ## 失败看护与切换
 
