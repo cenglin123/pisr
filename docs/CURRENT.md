@@ -18,7 +18,7 @@
 - pi 0.84.3；默认白名单：`xiaomi/mimo-v2.5`、`xiaomi/mimo-v2.5-pro`、`minimax-cn/MiniMax-M3`、`deepseek/deepseek-v4-flash`（高质量 verdict 档：MiniMax-M3 ↔ deepseek-v4-flash 异源双视角）
 - 实证（2026-08-26）：`@file` prompt 注入 ✅；`--tools read,grep,find,ls` 硬白名单（模型无 write、零产物）✅；`--mode json` 事件流含 usage/toolcall ✅
 - 实证（2026-09-06）：运行时验证档 `--tools read,grep,find,ls,bash` 在线冒烟 ✅——bash 工具可用；事件流 `toolName:"bash"`，越权审计正确计量；`--capture-reply` 组合正常
-- 通道状态（2026-09-06）：`minimax-cn` 无 API key（auth 失败，未消耗调用）；`deepseek` 可用
+- 通道状态（2026-09-06）：`minimax-cn` key 已补配（preflight 实测 available）；`deepseek` preflight 可用
 
 ## 本轮新增能力（冒烟中固化）
 
